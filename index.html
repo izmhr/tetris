@@ -1,0 +1,278 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SIDONIA CSS</title>
+  <style type="text/css">
+    @font-face {
+      font-family: "makinas";
+      src: url(font/makinas_kana_pilot.otf) format("OpenType");
+    }
+    * {
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #ddd;
+      text-align: center;
+    }
+    table {
+      margin: auto;
+      border-spacing: 1px;
+    }
+    th {
+      width: 20px;
+      height: 20px;
+      background: #eee;
+    }
+    .cls1 { background: #00FFFF; }
+    .cls2 { background: #8000ff; }
+    .cls3 { background: #FF0000; }
+  </style>
+</head>
+<body>
+  <h1>tetris</h1>
+  <table>
+  </table>
+
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="blocks.js"></script>
+  <script>
+    const columns = 20;
+    const rows = 10;
+
+    var matrix = [];
+    $table = $('table');
+
+    for( var i = 0; i < columns; i++) {
+      var $tr = $('<tr/>');
+      var cl = [];
+      for( var j = 0; j < rows; j++ ) {
+        var $th = $('<th/>');
+        if( i >= 5 && j == 2 ) $th.addClass('cls2').addClass('inactive');
+        $tr.append( $th );
+        cl.push(0);
+      }
+      $table.append($tr);
+      matrix.push(cl);
+    }
+
+    console.log(blocks);
+    console.log(matrix);
+
+    var Block = function() {
+      this.pos = {x:3, y:0 };
+      this.type = 0; // 0-1
+      this.size = 0;
+      this.cls = "";
+      this.angle = 0; // 0-4
+      this.initialize =  function() {
+        this.type = 1 + Math.floor( Math.random() * ( blocks.length - 1 ) );
+        if( this.type == 1 ) this.size = 4;
+        else this.size = 3;
+        this.cls = "cls" + this.type;
+        this.angle = Math.floor( Math.random() * 4 );
+      };
+      // -------------------------
+      // 各ターンの判定
+      // -------------------------
+      this.fallJudge = function() {
+        // 今回落ちるのどうなの判定
+      };
+      this.eraseJudge = function() {
+        // 行を見ていって、消すモノを判定
+      };
+      // -------------------------
+      // 各ターンの処理
+      // -------------------------
+      this.clear = function() {
+        for ( var c = 0; c < this.size; c++ ) {
+          for ( var r = 0; r < this.size; r++ ) {
+            var gpos = this.globalPos(r,c);
+            var $targetTH = $getTH( gpos.x, gpos.y );
+            if( !$targetTH.hasClass('inactive') ) {
+              $targetTH.removeClass();
+            }
+          }
+        }
+      }
+      this.fill = function() {
+        for ( var c = 0; c < this.size; c++ ) {
+          for ( var r = 0; r < this.size; r++ ) {
+            var gpos = this.globalPos(r,c);
+            if( blocks[this.type][this.angle][c][r] == 1) {
+              $getTH( gpos.x, gpos.y ).addClass(this.cls).addClass('active');
+            } 
+          }
+        }
+      }
+      this.redraw = function() {
+        this.clear();
+        this.fill();
+      };
+      this.fall = function() {
+        // 実際落とす(１行進める)処理
+        this.clear();
+        this.pos.y++;
+        this.fill();
+      };
+      this.fix = function() {
+        // これ以上落ちれないときは、その場を埋めていく処理
+      }
+      this.erase = function() {
+        // 消して、間を詰める
+      };
+      // -------------------------
+      // 待機時間のアクション
+      // -------------------------
+      this.rotate =  function(cw) {
+        this.clear();
+        if( cw ) {
+          if ( ++this.angle == 4 ) this.angle = 0;
+        } else {
+          if ( --this.angle == -1 ) this.angle = 3;
+        }
+        this.fill();
+      };
+      this.slide = function( left ) {
+        this.clear();
+        if( left ) {
+          this.pos.x--;
+        } else {
+          this.pos.x++;
+        }
+        this.avoidWhenSlide( left );
+        this.fill();
+      };
+      // -------------------------
+      // 位置修正処理
+      // -------------------------
+      this.avoidWallWhenRotate = function() {
+        // 壁にぶつかっているときにずらす処理
+        for ( var c = 0; c < this.size; c++ ) {
+          for ( var r = 0; r < this.size; r++ ) {
+            var gpos = this.globalPos(r,c);
+
+            if( blocks[this.type][this.angle][c][r] == 1 ) {
+              
+              // 壁判定
+              if ( gpos.x >= rows ) {
+                this.pos.x--;
+                return false;
+              } else if ( gpos.x <= -1 ) {
+                this.pos.x++;
+                return false;
+              }
+
+              // 既存ブロック判定
+              else if ( $getTH( gpos.x, gpos.y ).hasClass('inactive') ) {
+                if ( left ) {
+                  this.pos.x++;
+                } else {
+                  this.pos.x--;
+                }
+                return false;
+              }
+            }
+          }
+        }
+      };
+      this.avoidFloorWhenRotate = function() {
+        // 最後のあがきでくるくる回したりするときに上によける処理
+      };
+      this.avoidWhenSlide = function( left ) {
+        // スライド時のぶつかり判定
+        for ( var c = 0; c < this.size; c++ ) {
+          for ( var r = 0; r < this.size; r++ ) {
+            var gpos = this.globalPos(r,c);
+
+            if( blocks[this.type][this.angle][c][r] == 1 ) {
+              
+              // 壁判定
+              if ( gpos.x >= rows ) {
+                this.pos.x--;
+                return false;
+              } else if ( gpos.x <= -1 ) {
+                this.pos.x++;
+                return false;
+              }
+
+              // 既存ブロック判定
+              else if ( $getTH( gpos.x, gpos.y ).hasClass('inactive') ) {
+                if ( left ) {
+                  this.pos.x++;
+                } else {
+                  this.pos.x--;
+                }
+                return false;
+              }
+            }
+          }
+        }
+      };
+      // -------------------------
+      // ユーティリティ
+      // -------------------------
+      this.globalPos = function( localx, localy ) {
+        return { x: this.pos.x + localx, y: this.pos.y + localy };
+      };
+    }
+
+    // -------------------------
+    // ユーティリティ
+    // -------------------------
+    var $getTH = function( x, y ) {
+      return $('tr:eq(' + y + ') th:eq(' + x + ')');
+    };
+
+    var draw = function() {
+      // for( var i = 0; i < columns; i++) {
+      //   var $tr = $('tr:eq(' + i + ')');
+      //   for( var j = 0; j < rows; j++ ) {
+      //     var $th = $( 'th:eq(' + j + ')', $tr);
+      //     if( i == j ) $th.css('background', '#F00');
+      //   }
+      // }      
+    };
+
+    $(function() {
+      var block = new Block();
+      block.initialize();
+      console.log(block);
+
+       // -------------------------
+      // 操作
+      // -------------------------
+      $(window).keydown( function(e) {
+        switch( e.which ) {
+          case 114: //r
+            block.rotate(true);
+          break;
+          
+          case 82:  //shift+r
+            block.rotate(false);
+          break;
+
+          case 37:  //left
+            block.slide(true);
+          break;
+
+          case 39:  //right
+            block.slide(false);
+          break;
+          
+          default:
+          console.log(e.which);
+          break;
+        }
+      });
+
+      var loop = function () {
+        block.fall();
+        setTimeout(loop, 1500)
+      };
+      setTimeout(loop, 1500);
+    });
+  </script>
+</body>
+</html>
