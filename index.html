@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>SIDONIA CSS</title>
+  <title>* TETRIS *</title>
   <style type="text/css">
     @font-face {
       font-family: "makinas";
@@ -15,6 +15,7 @@
     body {
       background: #ddd;
       text-align: center;
+      height: 100%;
     }
     table {
       margin: auto;
@@ -31,6 +32,30 @@
     .cls1 { background: #00FFFF; }
     .cls2 { background: #8000ff; }
     .cls3 { background: #FF0000; }
+
+    .overlay {
+      background: rgba(0, 0, 0, 0.8);
+      text-align: center;
+      vertical-align: middle;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      font-size: 20pt;
+      font-weight: bold;
+      color: white;
+    }
+    .overlay:before {
+      display: inline-block;
+      content: '';
+      width: 0;
+      height: 100%;
+      vertical-align: middle;
+    }
+    .texts {
+      display: inline-block;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -47,33 +72,43 @@
     var matrix = [];
     $table = $('table');
 
-    for( var i = 0; i < columns + 1; i++) {
-      var $tr = $('<tr/>');
-      var cl = [];
-      for( var j = 0; j < rows + 2; j++ ) {
-        var $th = $('<th/>');
-        // if( i >= 5 && j == 6 ) $th.addClass('cls2').addClass('inactive'); // test
-        // if( i >= 10 && j == 7 ) $th.addClass('cls2').addClass('inactive'); // test 
-        // if( i == 7 ) $th.addClass('cls2').addClass('inactive'); //test
-        if ( j == 0 || j == rows + 1 || i == columns) $th.addClass('inactive').addClass('wall');
-        $tr.append( $th );
-        cl.push(0);
+    var initialize = function() {
+      $table.empty();
+      for( var i = 0; i < columns + 1; i++) {
+        var $tr = $('<tr/>');
+        var cl = [];
+        for( var j = 0; j < rows + 2; j++ ) {
+          var $th = $('<th/>');
+          // if( i >= 5 && j == 6 ) $th.addClass('cls2').addClass('inactive'); // test
+          // if( i >= 10 && j == 7 ) $th.addClass('cls2').addClass('inactive'); // test 
+          // if( i == 7 ) $th.addClass('cls2').addClass('inactive'); //test
+          if ( j == 0 || j == rows + 1 || i == columns) $th.addClass('inactive').addClass('wall');
+          $tr.append( $th );
+          cl.push(0);
+        }
+        $table.append($tr);
+        matrix.push(cl);
       }
-      $table.append($tr);
-      matrix.push(cl);
+    }
+    initialize();
+
+    var gameOverDisplay = function() {
+      $('body').append('<div class="overlay"><div class="texts"><p>GAME OVER</p><p>PRESS ENTER TO REPLAY</p></div></div>');
     }
 
     console.log(blocks);
     console.log(matrix);
 
+    var initY = -1;
+
     var Block = function() {
-      this.pos = {x:4, y:0 };
+      this.pos = {x:4, y:initY };
       this.type = 0; // 0-1
       this.size = 0;
       this.cls = "";
       this.angle = 0; // 0-4
       this.initialize =  function() {
-        this.pos = {x:4, y:0 };
+        this.pos = {x:4, y:initY };
         this.type = 1 + Math.floor( Math.random() * ( blocks.length - 1 ) );
         if( this.type == 1 ) this.size = 4;
         else this.size = 3;
@@ -85,7 +120,7 @@
       // -------------------------
       this.fallJudge = function() {
         // 今回落ちるのどうなの判定
-        this.pos.y++;
+        this.pos.y++; // 仮に落としてみて判定する
         for ( var c = 0; c < this.size; c++ ) {
           for ( var r = 0; r < this.size; r++ ) {
             var gpos = this.globalPos(r,c);
@@ -99,13 +134,19 @@
             }
           }
         }
-        this.pos.y--;
+        this.pos.y--; // 初めに仮に落としただけなので、最終的には戻す
         console.log("まだおちます");
         return true;
 
       };
       this.eraseJudge = function() {
         // 行を見ていって、消すモノを判定
+      };
+      this.gameOverJudge = function() {
+        if( this.pos.y <= initY ) {
+          return true;
+        }
+        return false;
       };
       // -------------------------
       // 各ターンの処理
@@ -160,22 +201,44 @@
       // -------------------------
       this.rotate =  function(cw) {
         this.clear();
+
+        var angleMem = this.angle;
         if( cw ) {
           if ( ++this.angle == 4 ) this.angle = 0;
         } else {
           if ( --this.angle == -1 ) this.angle = 3;
         }
-        this.avoidWallWhenRotate();
+        var avoidCounter = 0;
+        if( this.avoidWallWhenRotate() ) {
+          avoidCounter++;
+          if( this.avoidWallWhenRotate() ) {
+            avoidCounter++;
+          }
+        }
+        if( this.avoidFloorWhenRotate() ) {
+          avoidCounter++;
+        }
+        if( avoidCounter >=2 ) this.angle = angleMem;
+        
         this.fill();
       };
       this.slide = function( left ) {
+        var posxMem = this.pos.x;
         this.clear();
         if( left ) {
           this.pos.x--;
         } else {
           this.pos.x++;
         }
-        this.avoidWhenSlide( left );
+        var avoidCounter = 0;
+        if(  this.avoidWhenSlide( left ) ) {
+          avoidCounter++;
+          if(  this.avoidWhenSlide( left ) ) {
+            avoidCounter++;
+          }
+        }
+        if( avoidCounter >=2 ) this.pos.x = posxMem;
+       
         this.fill();
       };
       // -------------------------
@@ -211,19 +274,47 @@
                 } else {
                   if ( r == 0 ) {
                     this.pos.x++;
-                  }
-                  if ( r == 2 ) {
+                  } else if ( r == 2 ) {
                     this.pos.x--;
                   }
                 }
-                return false;
+                return true;
               }
             }
           }
         }
+        return false;
       };
       this.avoidFloorWhenRotate = function() {
         // 最後のあがきでくるくる回したりするときに上によける処理
+        for ( var c = 0; c < this.size; c++ ) {
+          for ( var r = 0; r < this.size; r++ ) {
+            var gpos = this.globalPos(r,c);
+
+            if( blocks[this.type][this.angle][c][r] == 1 ) {
+              // 既存ブロック判定
+              if ( $getTH( gpos.x, gpos.y ).hasClass('inactive') ) {
+                if( this.type == 1) {
+                  if( c == 2 ) {
+                    this.pos.y -= 2;
+                  } else if ( r == 3) {
+                    if ( $getTH( gpos.x, gpos.y + 1).hasClass('inactive') ) {
+                      this.pos.y -= 2;
+                    } else {
+                      this.pos.y--;
+                    }
+                  } 
+                } else {
+                  if ( c == 2 ) {
+                    this.pos.y--;
+                  }
+                }
+                return true;
+              }
+            }
+          }
+        }
+        return false;
       };
       this.avoidWhenSlide = function( left ) {
         // スライド時のぶつかり判定
@@ -239,11 +330,12 @@
                 } else {
                   this.pos.x--;
                 }
-                return false;
+                return true;
               }
             }
           }
         }
+        return false;
       };
       // -------------------------
       // ユーティリティ
@@ -260,17 +352,24 @@
       return $('tr:eq(' + y + ') th:eq(' + x + ')');
     };
 
-    var draw = function() {
-      // for( var i = 0; i < columns; i++) {
-      //   var $tr = $('tr:eq(' + i + ')');
-      //   for( var j = 0; j < rows; j++ ) {
-      //     var $th = $( 'th:eq(' + j + ')', $tr);
-      //     if( i == j ) $th.css('background', '#F00');
-      //   }
-      // }      
+    var eraseJudge = function( block ) {
+      console.log( "erase judge" );
+      for ( var c = block.pos.y; c < block.pos.y + block.size; c++ ) {
+        if( c >= columns ) continue;
+        // var eraseflag = true;
+        if( $('tr:eq(' + c + ') th.inactive').length == rows + 2 ) {
+           console.log( "***********ERASE**********" );
+          $('tr:eq(' + c + ') th').removeClass();
+          $('tr:eq(' + c + ') th:first-child').addClass('inactive wall');
+          $('tr:eq(' + c + ') th:last-child').addClass('inactive wall');
+        } else {
+          console.log("けさないよ");
+        }
+      } 
     };
 
     $(function() {
+      var loopID;
       var block = new Block();
       block.initialize();
       console.log(block);
@@ -280,44 +379,69 @@
           block.fall();
         }  else {
           block.fix();
+          eraseJudge( block );
+          if( block.gameOverJudge() ) {
+            // clearTimeout( loopID );
+            return false; // fallProcess終了のおしらせ
+          }
           block.initialize();
         }
+        return true;
       }
+
+      var loop = function () {
+        if( fallProcess() ) {
+          loopID = setTimeout(loop, 1000);         
+        } else {
+          loopID = null;
+          gameOverDisplay();
+        }
+      };
+      loopID = setTimeout(loop, 1000);
+
       // -------------------------
       // 操作
       // -------------------------
       $(window).keydown( function(e) {
-        switch( e.which ) {
-          case 114: //r
-          block.rotate(true);
-          break;
-          
-          case 82:  //shift+r
-          block.rotate(false);
-          break;
+        if( loopID !== null ) {
+          switch( e.which ) {
+            case 114: //r
+            block.rotate(true);
+            break;
+            
+            case 82:  //shift+r
+            block.rotate(false);
+            break;
 
-          case 37:  //left
-          block.slide(true);
-          break;
+            case 37:  //left
+            block.slide(true);
+            break;
 
-          case 39:  //right
-          block.slide(false);
-          break;
-          case 40:  //down
-          fallProcess();
-          break;
-          
-          default:
-          console.log(e.which);
-          break;
+            case 39:  //right
+            block.slide(false);
+            break;
+
+            case 40:  //down
+            fallProcess();
+            break;
+
+            default:
+            console.log(e.which);
+            break;
+          }       
+        } else {
+          switch( e.which) {
+            case 13:
+            $('.overlay').remove();
+            console.log("replay!");
+            initialize();
+            block.initialize();
+            loopID = setTimeout(loop, 1000);
+            break;
+          }
         }
-      });
 
-      var loop = function () {
-        fallProcess();
-        setTimeout(loop, 1500)
-      };
-      setTimeout(loop, 1500);
+      });
     });
   </script>
 </body>
