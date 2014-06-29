@@ -69,26 +69,32 @@
     const columns = 20;
     const rows = 10;
 
-    var matrix = [];
     $table = $('table');
+
+    var createNewLine = function() {
+      var $tr = $('<tr/>');
+      for( var j = 0; j < rows + 2; j++ ) {
+        var $th = $('<th/>');
+        if ( j == 0 || j == rows + 1 ) $th.addClass('inactive').addClass('wall');
+        $tr.append( $th );
+      }
+      return $tr;
+    }
 
     var initialize = function() {
       $table.empty();
-      for( var i = 0; i < columns + 1; i++) {
-        var $tr = $('<tr/>');
-        var cl = [];
-        for( var j = 0; j < rows + 2; j++ ) {
-          var $th = $('<th/>');
-          // if( i >= 5 && j == 6 ) $th.addClass('cls2').addClass('inactive'); // test
-          // if( i >= 10 && j == 7 ) $th.addClass('cls2').addClass('inactive'); // test 
-          // if( i == 7 ) $th.addClass('cls2').addClass('inactive'); //test
-          if ( j == 0 || j == rows + 1 || i == columns) $th.addClass('inactive').addClass('wall');
-          $tr.append( $th );
-          cl.push(0);
-        }
-        $table.append($tr);
-        matrix.push(cl);
+      for( var i = 0; i < columns; i++) {
+        $table.append( createNewLine() );
       }
+
+      // 最終行
+      var $tr = $('<tr/>');
+      for( var j = 0; j < rows + 2; j++ ) {
+        var $th = $('<th/>');
+        $th.addClass('inactive').addClass('wall');
+        $tr.append( $th );
+      }
+      $table.append( $tr );
     }
     initialize();
 
@@ -97,7 +103,6 @@
     }
 
     console.log(blocks);
-    console.log(matrix);
 
     var initY = -1;
 
@@ -357,16 +362,23 @@
       for ( var c = block.pos.y; c < block.pos.y + block.size; c++ ) {
         if( c >= columns ) continue;
         // var eraseflag = true;
-        if( $('tr:eq(' + c + ') th.inactive').length == rows + 2 ) {
+        if( $('tr:eq(' + c + ') th.inactive').length == rows + 2 ) {  // すべてが inactive だったらば
            console.log( "***********ERASE**********" );
-          $('tr:eq(' + c + ') th').removeClass();
-          $('tr:eq(' + c + ') th:first-child').addClass('inactive wall');
-          $('tr:eq(' + c + ') th:last-child').addClass('inactive wall');
+           eraseOneLineFillOneLine( $('tr:eq(' + c + ')') );
         } else {
           console.log("けさないよ");
         }
       } 
     };
+
+    var eraseOneLineFillOneLine = function( $tr ) {
+      // tr要素丸ごと消して、上に1行積めばどうか？
+      $tr.remove();
+      $table.prepend( createNewLine() );
+      // $('tr:eq(' + c + ') th').removeClass();
+      // $('tr:eq(' + c + ') th:first-child').addClass('inactive wall');
+      // $('tr:eq(' + c + ') th:last-child').addClass('inactive wall');
+    }
 
     $(function() {
       var loopID;
