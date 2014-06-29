@@ -19,9 +19,13 @@ th {
 th.wall {
   background: transparent;
 }
-.cls1 { background: #00FFFF; }
-.cls2 { background: #8000ff; }
-.cls3 { background: #FF0000; }
+.cls1 { background: #00BFFF; }  /*sky*/
+.cls2 { background: #8000ff; }  /*purple*/
+.cls3 { background: #FF0000; }  /*red*/
+.cls4 { background: #01DF01; }  /*green*/
+.cls5 { background: #FFFF00; }  /*yellow*/
+.cls6 { background: #0000FF; }  /*blue*/
+.cls7 { background: #FF8000; }  /*orange*/
 
 .overlay {
   background: rgba(0, 0, 0, 0.8);
